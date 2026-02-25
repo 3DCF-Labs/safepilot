@@ -1,0 +1,57 @@
+services:
+  safepilot:
+    image: ghcr.io/3dcf-labs/safepilot:latest
+    restart: unless-stopped
+
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+
+    environment:
+      ALLOWED_USER_ID: "94000918"
+      BOT_TOKEN_FILE: "/run/secrets/bot_token"
+      DEFAULT_REPO: "https://github.com/3DCF-Labs/safepilot.git"
+
+      DATA_DIR: "/var/lib/tg-orch"
+      LOG_DIR: "/var/log/tg-orch"
+
+      LLM_MODE: "direct"
+      LLM_PROVIDER: "openai"
+      STRICT_SECRET_FILE_PERMS: "1"
+      ALLOW_PRIVATE_FETCH: "0"
+      AGENT_ENABLE_WRITE_TOOLS: "0"
+      AGENT_ENABLE_BROWSER_TOOL: "0"
+
+      TG_ORCH_DANGEROUS_SANDBOX: "off"
+      TG_ORCH_SAFE_PATH: "/usr/bin:/bin"
+      ALLOWED_SHELL_COMMANDS: "git"
+
+      OPENAI_API_KEY_FILE: "/run/secrets/openai_key"
+      ORCH_MASTER_KEY_FILE: "/run/secrets/master_key"
+
+    secrets:
+      - bot_token
+      - openai_key
+      - master_key
+
+    volumes:
+      - safepilot-data:/var/lib/tg-orch
+      - safepilot-logs:/var/log/tg-orch
+
+secrets:
+  bot_token:
+    file: ./secrets/bot_token
+  openai_key:
+    file: ./secrets/openai_key
+  master_key:
+    file: ./secrets/master_key
+
+volumes:
+  safepilot-data:
+  safepilot-logs:

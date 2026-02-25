@@ -1,0 +1,17 @@
+name: test
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1
+        with:
+          toolchain: 1.88.0
+      - name: cargo check
+        run: RUSTFLAGS="-D warnings" cargo check
+      - name: cargo test
+        run: RUSTFLAGS="-D warnings" cargo test

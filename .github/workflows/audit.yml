@@ -1,0 +1,19 @@
+name: audit
+
+on:
+  pull_request:
+  schedule:
+    - cron: "23 3 * * 1"
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1
+        with:
+          toolchain: 1.88.0
+      - name: install cargo-audit
+        run: cargo install cargo-audit --version 0.22.1 --locked --force
+      - name: cargo audit
+        run: cargo audit
