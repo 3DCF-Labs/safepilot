@@ -343,6 +343,9 @@ async fn handle_command(
     let user_id = msg.from().map(|u| u.id.0 as i64).unwrap_or(0);
     let role = orchestrator.resolve_telegram_role(user_id).await;
     if !command_allowed_for_role(&cmd, role) {
+        if matches!(role, AccessRole::Public) {
+            return handle_message(bot, msg, orchestrator).await;
+        }
         orchestrator
             .audit_event(
                 msg.chat.id.0,
@@ -1091,6 +1094,33 @@ fn parse_explicit_code_intent(original: &str) -> Option<(String, String)> {
     None
 }
 
+pub(super) fn rewrite_public_command_as_text(input: &str) -> Option<String> {
+    let text = input.trim();
+    if !text.starts_with('/') {
+        return Some(text.to_string());
+    }
+    let without_slash = text.trim_start_matches('/').trim();
+    if without_slash.is_empty() {
+        return None;
+    }
+    let mut parts = without_slash.split_whitespace();
+    let first = parts.next().unwrap_or_default();
+    let cmd = first.split('@').next().unwrap_or_default().trim();
+    if cmd.is_empty() {
+        return None;
+    }
+    let remainder = parts.collect::<Vec<_>>().join(" ");
+    let cmd_lc = cmd.to_ascii_lowercase();
+    if matches!(cmd_lc.as_str(), "start" | "help") {
+        return Some("hi".to_string());
+    }
+    if remainder.is_empty() {
+        Some(cmd_lc)
+    } else {
+        Some(format!("{} {}", cmd_lc, remainder))
+    }
+}
+
 fn extract_blocked_task_id(text: &str) -> Option<String> {
     if let Some(pos) = text.find("/deny ") {
         let rest = &text[pos + 6..];
@@ -1613,5 +1643,30 @@ mod tests {
         let out = format_for_telegram_html(input);
         assert!(out.contains("📌 <b>Summary</b>"));
         assert!(out.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    }
+
+    #[test]
+    fn rewrite_public_start_and_help_to_hi() {
+        assert_eq!(
+            rewrite_public_command_as_text("/start"),
+            Some("hi".to_string())
+        );
+        assert_eq!(
+            rewrite_public_command_as_text("/help@SafePilotBot"),
+            Some("hi".to_string())
+        );
+    }
+
+    #[test]
+    fn rewrite_public_other_commands_to_plain_text() {
+        assert_eq!(
+            rewrite_public_command_as_text("/status now"),
+            Some("status now".to_string())
+        );
+        assert_eq!(
+            rewrite_public_command_as_text("/unsafe 10"),
+            Some("unsafe 10".to_string())
+        );
+        assert_eq!(rewrite_public_command_as_text("/"), None);
     }
 }

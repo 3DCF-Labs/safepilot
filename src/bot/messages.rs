@@ -39,7 +39,7 @@ pub(super) async fn handle_message(
         AccessRole::Public
     };
 
-    let text = match msg.text() {
+    let mut text = match msg.text() {
         Some(text) if !text.trim().is_empty() => text.trim().to_string(),
         _ => return Ok(()),
     };
@@ -76,19 +76,26 @@ pub(super) async fn handle_message(
     }
 
     if !is_operator && text.starts_with('/') {
-        orchestrator
-            .audit_event(
-                chat_id.0,
-                None,
-                Some(&format!("telegram-user-{}", user_id)),
-                Some(role.as_str()),
-                crate::orchestrator::Audience::Public,
-                "acl_message_command_denied",
-                &format!("text={}", truncate_str(&text, 120)),
-            )
-            .await;
-        send_message(&bot, chat_id, public_command_denied_message()).await?;
-        return Ok(());
+        if let Some(rewritten) = rewrite_public_command_as_text(&text) {
+            orchestrator
+                .audit_event(
+                    chat_id.0,
+                    None,
+                    Some(&format!("telegram-user-{}", user_id)),
+                    Some(role.as_str()),
+                    crate::orchestrator::Audience::Public,
+                    "acl_message_command_rewritten",
+                    &format!(
+                        "original={} rewritten={}",
+                        truncate_str(&text, 120),
+                        truncate_str(&rewritten, 120)
+                    ),
+                )
+                .await;
+            text = rewritten;
+        } else {
+            return Ok(());
+        }
     }
     if !msg.chat.is_private() || !is_operator {
         orchestrator
