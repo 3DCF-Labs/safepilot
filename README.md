@@ -10,6 +10,8 @@
 
 **SafePilot** - a self-hosted AI assistant that executes real work, safely. It turns messages into executable automation runs with SQLite persistence, job execution, [3DCF context compression](https://github.com/3DCF-Labs/doc2dataset), and integrations (Slack/GitHub/Notion/Linear/Jira/Todoist/Weather/Brave Search/Telegram/etc).
 
+> [Configuration guide for begginers](https://safepilot.dev/#configuration-guide)
+
 ## Features
 - Role-aware Telegram interface with owner/admin/public access. `ALLOWED_USER_ID` bootstraps the owner user, while public channels can be bound to workspace-scoped runtimes.
 - Workspace-first UX for create/switch/configure/connect flows (`/ws`, `/wscurrent`, `/wslist`, `/wsnew`, `/wsuse`, `/wsconfig`, `/wspublic`, `/wscaps`).
