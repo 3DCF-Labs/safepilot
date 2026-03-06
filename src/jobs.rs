@@ -581,6 +581,14 @@ fn enforce_network_policy_for_text_goal(
     if fetch_mode == WorkspaceFetchMode::Open {
         return Ok(());
     }
+    if action == "search"
+        && fetch_mode == WorkspaceFetchMode::TrustedOnly
+        && trusted_domains.is_empty()
+    {
+        return Err(anyhow!(
+            "search blocked by workspace policy (trusted_only). Add a trusted domain first."
+        ));
+    }
     let hosts = extract_hosts_from_text_goal(goal);
     let blocked_hosts: Vec<String> = hosts
         .into_iter()
@@ -2504,4 +2512,48 @@ async fn run_weather(
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trusted_only_search_is_blocked_without_trusted_domains() {
+        let trusted: Vec<String> = Vec::new();
+        let err = enforce_network_policy_for_text_goal(
+            "Onchain School pricing plans cost",
+            WorkspaceFetchMode::TrustedOnly,
+            &trusted,
+            "search",
+        )
+        .expect_err("trusted_only search should fail without trusted domains");
+        assert!(err
+            .to_string()
+            .contains("Add a trusted domain first"));
+    }
+
+    #[test]
+    fn trusted_only_search_requires_query_to_target_trusted_domains() {
+        let trusted = vec!["onchainschool.com".to_string()];
+        let err = enforce_network_policy_for_text_goal(
+            "crypto course prices",
+            WorkspaceFetchMode::TrustedOnly,
+            &trusted,
+            "search",
+        )
+        .expect_err("trusted_only search should require trusted domain scope");
+        assert!(err
+            .to_string()
+            .contains("Query must target trusted domains"));
+    }
+
+    #[test]
+    fn trusted_only_search_allows_query_targeting_trusted_domain() {
+        let trusted = vec!["onchainschool.com".to_string()];
+        let ok = enforce_network_policy_for_text_goal(
+            "onchainschool pricing site:onchainschool.com",
+            WorkspaceFetchMode::TrustedOnly,
+            &trusted,
+            "search",
+        );
+        assert!(ok.is_ok());
+    }
+}
